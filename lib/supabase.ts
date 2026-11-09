@@ -13,6 +13,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+export type Profile = {
+  id: string;
+  device_id: string;
+  display_name: string;
+  role: 'recipient' | 'sender';
+  created_at: string;
+};
+
+export type Connection = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  status: 'active' | 'revoked';
+  created_at: string;
+};
+
+export type ConnectionWithProfile = Connection & {
+  recipient?: Profile;
+  sender?: Profile;
+};
+
 export type Bill = {
   id: string;
   biller_name: string;
@@ -28,6 +49,7 @@ export type Bill = {
   payout_anchor: string;
   paid_at: string | null;
   created_at: string;
+  recipient_id: string | null;
 };
 
 export type BillStatus = Bill['status'];

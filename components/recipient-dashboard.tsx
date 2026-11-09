@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, Bill } from '@/lib/supabase';
+import { useRole } from '@/lib/role-context';
+import { ConnectionPanel } from '@/components/connection-panel';
 import {
   PlusCircle,
   Trash2,
@@ -26,6 +28,7 @@ const CATEGORIES = [
 const CURRENCIES = ['PHP', 'MXN', 'INR', 'VND', 'NGN', 'KES', 'USD'];
 
 export function RecipientDashboard() {
+  const { profile } = useRole();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -41,16 +44,21 @@ export function RecipientDashboard() {
   const [dueDate, setDueDate] = useState('');
 
   const loadBills = useCallback(async () => {
+    if (!profile) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     const { data, error } = await supabase
       .from('bills')
       .select('*')
+      .eq('recipient_id', profile.id)
       .order('created_at', { ascending: false });
     if (error) setError(error.message);
     else setBills((data as Bill[]) || []);
     setLoading(false);
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     loadBills();
@@ -58,6 +66,10 @@ export function RecipientDashboard() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!profile) {
+      setError('Your profile is not ready yet. Please wait a moment and try again.');
+      return;
+    }
     const amt = parseFloat(amount);
     if (!billerName || !accountNumber || !Number.isFinite(amt) || amt <= 0) {
       setError('Biller name, account number, and a positive amount are required.');
@@ -73,6 +85,7 @@ export function RecipientDashboard() {
       category,
       recipient_name: recipientName,
       due_date: dueDate || null,
+      recipient_id: profile.id,
     });
     if (error) {
       setError(error.message);
@@ -106,9 +119,9 @@ export function RecipientDashboard() {
             Household Bills
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            Upload the bills your overseas family member should cover. We track
-            each one from Pending to Paid and show the on-chain settlement once
-            it clears.
+            Upload the bills your overseas family member should cover. Link
+            their account with a one-time code so they can see and pay your
+            bills directly.
           </p>
         </div>
         <div className="gold-bar h-px w-full" />
@@ -143,8 +156,8 @@ export function RecipientDashboard() {
 
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-5">
-          {/* Upload form */}
-          <div className="lg:col-span-2">
+          {/* Left column: upload + connection */}
+          <div className="space-y-8 lg:col-span-2">
             <div className="border border-black">
               <div className="flex items-center gap-3 border-b border-black bg-black px-5 py-4 text-white">
                 <Upload className="h-5 w-5" />
@@ -232,7 +245,7 @@ export function RecipientDashboard() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !profile}
                   className="flex w-full items-center justify-center gap-2 border border-black bg-black px-4 py-3 text-sm uppercase tracking-[0.18em] text-white transition-colors hover:bg-white hover:text-black disabled:opacity-50"
                 >
                   {submitting ? (
@@ -244,6 +257,8 @@ export function RecipientDashboard() {
                 </button>
               </form>
             </div>
+
+            <ConnectionPanel />
           </div>
 
           {/* Bill list */}
@@ -259,7 +274,12 @@ export function RecipientDashboard() {
               </button>
             </div>
 
-            {loading ? (
+            {!profile ? (
+              <div className="flex items-center gap-3 border border-black p-8 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Setting up your profile…
+              </div>
+            ) : loading ? (
               <div className="flex items-center gap-3 border border-black p-8 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Loading bills…
@@ -286,7 +306,6 @@ export function RecipientDashboard() {
         </div>
       </div>
 
-      {/* Local input styles for the editorial look */}
       <style>{`
         .remita-input {
           width: 100%;

@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase, Bill } from '@/lib/supabase';
+import { supabase, Bill, ConnectionWithProfile } from '@/lib/supabase';
+import { useRole } from '@/lib/role-context';
+import { ConnectionPanel } from '@/components/connection-panel';
 import {
   Loader2,
   Check,
@@ -13,6 +15,7 @@ import {
   Sparkles,
   ExternalLink,
   AlertCircle,
+  Users,
 } from 'lucide-react';
 
 const FX_RATES: Record<string, number> = {
@@ -42,26 +45,60 @@ type PayState = {
 };
 
 export function SenderDashboard() {
+  const { profile } = useRole();
+  const [connections, setConnections] = useState<ConnectionWithProfile[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payState, setPayState] = useState<PayState>({ status: 'idle', billId: null });
 
-  const loadBills = useCallback(async () => {
+  const loadData = useCallback(async () => {
+    if (!profile) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase
-      .from('bills')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) setError(error.message);
-    else setBills((data as Bill[]) || []);
+    try {
+      // Load active connections (sender → recipients)
+      const { data: conns, error: connErr } = await supabase
+        .from('connections')
+        .select('*, recipient:profiles!connections_recipient_id_fkey(*)')
+        .eq('sender_id', profile.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+      if (connErr) {
+        setError(connErr.message);
+        setLoading(false);
+        return;
+      }
+      const activeConns = (conns as ConnectionWithProfile[]) || [];
+      setConnections(activeConns);
+
+      const recipientIds = activeConns.map((c) => c.recipient_id);
+      if (recipientIds.length === 0) {
+        setBills([]);
+        setLoading(false);
+        return;
+      }
+
+      // Load bills from all connected recipients
+      const { data: billData, error: billErr } = await supabase
+        .from('bills')
+        .select('*')
+        .in('recipient_id', recipientIds)
+        .order('created_at', { ascending: false });
+      if (billErr) setError(billErr.message);
+      else setBills((billData as Bill[]) || []);
+    } catch {
+      // ignore
+    }
     setLoading(false);
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
-    loadBills();
-  }, [loadBills]);
+    loadData();
+  }, [loadData]);
 
   const payBill = async (bill: Bill) => {
     setPayState({ status: 'paying', billId: bill.id });
@@ -80,7 +117,6 @@ export function SenderDashboard() {
         throw new Error(json.error || 'Payment failed on the server.');
       }
 
-      // Update the bill in Supabase to paid
       const usdcAmount =
         Number(bill.amount_due) / (FX_RATES[bill.currency] ?? 56.0);
       const { error: updErr } = await supabase
@@ -94,18 +130,11 @@ export function SenderDashboard() {
         .eq('id', bill.id);
 
       if (updErr) {
-        // Payment succeeded on-chain but DB update failed — surface honestly
-        setPayState({
-          status: 'success',
-          billId: bill.id,
-          result: json,
-        });
-        setError(
-          `Paid on Stellar, but couldn't update bill status: ${updErr.message}`
-        );
+        setPayState({ status: 'success', billId: bill.id, result: json });
+        setError(`Paid on Stellar, but couldn't update bill status: ${updErr.message}`);
       } else {
         setPayState({ status: 'success', billId: bill.id, result: json });
-        await loadBills();
+        await loadData();
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -120,6 +149,13 @@ export function SenderDashboard() {
     0
   );
 
+  // Group bills by recipient
+  const billsByRecipient = connections.map((conn) => ({
+    connection: conn,
+    recipientName: conn.recipient?.display_name || 'Unknown',
+    bills: bills.filter((b) => b.recipient_id === conn.recipient_id),
+  }));
+
   return (
     <main className="min-h-screen bg-white">
       {/* Masthead */}
@@ -130,9 +166,8 @@ export function SenderDashboard() {
             Linked Family Bills
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            Every bill your family uploads appears here. Pay any of them with
-            USDC — a Stellar path payment delivers the local currency to the
-            payout anchor and settles the bill in seconds.
+            Pay any bill your family uploads with USDC — a Stellar path payment
+            delivers local currency to the payout anchor and settles in seconds.
           </p>
         </div>
         <div className="gold-bar h-px w-full" />
@@ -157,9 +192,9 @@ export function SenderDashboard() {
             borderRight
           />
           <StatBlock
-            label="Settled This Session"
-            value={paid.length.toString()}
-            sub="Paid on-chain"
+            label="Family Connected"
+            value={connections.length.toString()}
+            sub="Active links"
           />
         </div>
       </section>
@@ -186,50 +221,94 @@ export function SenderDashboard() {
       </section>
 
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Bills to Cover</h2>
-          <button
-            onClick={loadBills}
-            className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-black"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-5">
+          {/* Left: connections */}
+          <div className="lg:col-span-2">
+            <ConnectionPanel />
+          </div>
+
+          {/* Right: bills */}
+          <div className="lg:col-span-3">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Bills to Cover</h2>
+              <button
+                onClick={loadData}
+                className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-black"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Refresh
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-6 flex items-start gap-3 border border-black bg-black/5 px-4 py-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {!profile ? (
+              <div className="flex items-center gap-3 border border-black p-8 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Setting up your profile…
+              </div>
+            ) : loading ? (
+              <div className="flex items-center gap-3 border border-black p-8 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Loading linked bills…
+              </div>
+            ) : connections.length === 0 ? (
+              <div className="border border-black p-12 text-center">
+                <Users className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                <p className="text-lg">No family connected yet.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Generate a connection code on the left and share it with your
+                  family member to see their bills here.
+                </p>
+              </div>
+            ) : bills.length === 0 ? (
+              <div className="border border-black p-12 text-center">
+                <Link2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                <p className="text-lg">No bills from your family yet.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Once your family uploads bills, they will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {billsByRecipient.map((group) =>
+                  group.bills.length === 0 ? null : (
+                    <div key={group.connection.id}>
+                      <div className="mb-3 flex items-center gap-3 border-b border-black/20 pb-2">
+                        <span className="editorial-label">
+                          {group.recipientName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {group.bills.length} bill
+                          {group.bills.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="space-y-px border-y border-black bg-black">
+                        {group.bills.map((bill) => (
+                          <SenderBillRow
+                            key={bill.id}
+                            bill={bill}
+                            usdcEquivalent={
+                              Number(bill.amount_due) /
+                              (FX_RATES[bill.currency] ?? 56.0)
+                            }
+                            payState={payState}
+                            onPay={() => payBill(bill)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
         </div>
-
-        {error && (
-          <div className="mb-6 flex items-start gap-3 border border-black bg-black/5 px-4 py-3">
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="flex items-center gap-3 border border-black p-8 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Loading linked bills…
-          </div>
-        ) : bills.length === 0 ? (
-          <div className="border border-black p-12 text-center">
-            <Link2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="text-lg">No bills linked yet.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Switch to the Recipient view and upload a bill to see it here.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-px border-y border-black bg-black">
-            {bills.map((bill) => (
-              <SenderBillRow
-                key={bill.id}
-                bill={bill}
-                usdcEquivalent={Number(bill.amount_due) / (FX_RATES[bill.currency] ?? 56.0)}
-                payState={payState}
-                onPay={() => payBill(bill)}
-              />
-            ))}
-          </div>
-        )}
       </div>
 
       <footer className="mx-auto max-w-6xl px-6 py-12 text-center">
@@ -290,10 +369,8 @@ function SenderBillRow({
   onPay: () => void;
 }) {
   const isPaid = bill.status === 'paid';
-  const isPaying =
-    payState.status === 'paying' && payState.billId === bill.id;
-  const justPaid =
-    payState.status === 'success' && payState.billId === bill.id;
+  const isPaying = payState.status === 'paying' && payState.billId === bill.id;
+  const justPaid = payState.status === 'success' && payState.billId === bill.id;
   const payError =
     payState.status === 'error' && payState.billId === bill.id
       ? payState.error
