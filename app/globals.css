@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Black, white, gold palette — editorial, restrained */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 35%;
+
+    --accent: 45 70% 44%; /* gold */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 0% 0%; /* black for destructive in this restrained palette */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 45 70% 44%;
+
+    --gold: 45 70% 44%;
+    --gold-soft: 45 55% 88%;
+    --gold-foreground: 0 0% 0%;
+
+    --success: 150 30% 25%;
+    --warning: 45 90% 45%;
+
+    --radius: 0px; /* square, restrained controls */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    border-radius: 0 !important;
+  }
+  html {
+    font-family: 'Times New Roman', 'Times', 'Songti SC', serif;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "lnum" 1, "tnum" 1;
+    letter-spacing: 0.01em;
+  }
+  /* Numerals and currency should line up */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Crisp hairline rule used to separate editorial sections */
+  .rule {
+    @apply border-t border-black;
+  }
+  .rule-thin {
+    @apply border-t border-black/30;
+  }
+  .editorial-label {
+    @apply uppercase tracking-[0.2em] text-[11px] text-muted-foreground;
+  }
+  .gold-text {
+    color: hsl(var(--gold));
+  }
+  .gold-bar {
+    background: hsl(var(--gold));
+  }
+  .ink {
+    @apply bg-black text-white;
+  }
+  .paper {
+    @apply bg-white text-black;
+  }
+  /* Square bordered surface */
+  .surface {
+    @apply border border-black bg-white;
+  }
+}
+
+@layer utilities {
+  .font-serif-display {
+    font-family: 'Times New Roman', 'Times', serif;
+  }
+}
