@@ -28,7 +28,7 @@ const CATEGORIES = [
 const CURRENCIES = ['PHP', 'MXN', 'INR', 'VND', 'NGN', 'KES', 'USD'];
 
 export function RecipientDashboard() {
-  const { profile } = useRole();
+  const { profile, profileError } = useRole();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -274,7 +274,12 @@ export function RecipientDashboard() {
               </button>
             </div>
 
-            {!profile ? (
+            {profileError && !profile ? (
+              <div className="border border-black p-8">
+                <p className="font-bold">Your profile could not be set up.</p>
+                <p className="mt-2 text-sm text-muted-foreground">{profileError}</p>
+              </div>
+            ) : !profile ? (
               <div className="flex items-center gap-3 border border-black p-8 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 Setting up your profile…

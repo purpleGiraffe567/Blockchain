@@ -26,6 +26,7 @@ type RoleContextValue = {
   setRole: (r: Role | null) => void;
   clearRole: () => void;
   refreshProfile: () => Promise<void>;
+  profileError: string | null;
   loading: boolean;
 };
 
@@ -87,6 +88,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [deviceId, setDeviceId] = useState('');
   const [loading, setLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     const did = getOrCreateDeviceId();
@@ -121,6 +123,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       }
 
       if (r && deviceId) {
+        setProfileError(null);
         try {
           const p = await ensureProfile(deviceId, r);
           setProfile(p);
@@ -129,8 +132,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           } catch {
             // ignore
           }
-        } catch {
-          // Profile creation failed — app still works, bills just won't be scoped
+        } catch (err) {
+          setProfileError(
+            err instanceof Error ? err.message : 'Could not set up your profile.'
+          );
         }
       } else if (!r) {
         setProfile(null);
@@ -177,7 +182,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   return (
     <RoleContext.Provider
-      value={{ role, profile, deviceId, setRole, clearRole, refreshProfile, loading }}
+      value={{ role, profile, deviceId, setRole, clearRole, refreshProfile, profileError, loading }}
     >
       {children}
     </RoleContext.Provider>

@@ -86,10 +86,10 @@ export function ConnectionPanel() {
         p_sender_id: profile.id,
       });
       if (error) throw error;
-      if (data && data.length > 0) {
-        setOtpCode(data[0].code);
-        setOtpExpiry(data[0].expires_at);
-      }
+      const row = data?.[0];
+      if (!row) throw new Error('Could not create a code. Please try again.');
+      setOtpCode(row.otp_code);
+      setOtpExpiry(row.otp_expires_at);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate OTP');
     }
@@ -106,15 +106,15 @@ export function ConnectionPanel() {
         p_recipient_id: profile.id,
       });
       if (error) throw error;
-      if (data && data.length > 0) {
-        setVerifyMsg({
-          type: 'success',
-          text: `Connected to ${data[0].out_sender_display}. You can now share bills with them.`,
-        });
-        setEnteredCode('');
-        await loadConnections();
-        await refreshProfile();
-      }
+      const row = data?.[0];
+      if (!row) throw new Error('That code did not link any account. Please try again.');
+      setVerifyMsg({
+        type: 'success',
+        text: `Connected to ${row.out_sender_display}. Their account is now linked to yours.`,
+      });
+      setEnteredCode('');
+      await loadConnections();
+      await refreshProfile();
     } catch (err) {
       setVerifyMsg({
         type: 'error',
@@ -125,10 +125,11 @@ export function ConnectionPanel() {
   };
 
   const revokeConnection = async (connId: string) => {
-    const { error } = await supabase
-      .from('connections')
-      .update({ status: 'revoked' })
-      .eq('id', connId);
+    if (!profile) return;
+    const { error } = await supabase.rpc('disconnect_connection', {
+      p_connection_id: connId,
+      p_profile_id: profile.id,
+    });
     if (error) setError(error.message);
     else setConnections((c) => c.filter((x) => x.id !== connId));
   };
