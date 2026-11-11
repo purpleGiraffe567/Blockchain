@@ -16,16 +16,19 @@ export type Profile = {
   id: string;
   device_id: string;
   display_name: string;
+  email: string | null;
   role: Role;
 };
 
 type RoleContextValue = {
   role: Role | null;
   profile: Profile | null;
+  profileChecked: boolean;
   deviceId: string;
   setRole: (r: Role | null) => void;
   clearRole: () => void;
   refreshProfile: () => Promise<void>;
+  createRecipientProfile: (name: string, email: string) => Promise<void>;
   profileError: string | null;
   loading: boolean;
 };
@@ -50,41 +53,49 @@ function getOrCreateDeviceId(): string {
   }
 }
 
-async function ensureProfile(
-  deviceId: string,
-  role: Role
-): Promise<Profile> {
-  const { data: existing, error: lookupError } = await supabase
+async function findProfile(deviceId: string): Promise<Profile | null> {
+  const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('device_id', deviceId)
     .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as Profile) ?? null;
+}
 
-  if (lookupError) throw lookupError;
-  if (existing) {
-    return existing as Profile;
-  }
+async function ensureSenderProfile(deviceId: string): Promise<Profile> {
+  const existing = await findProfile(deviceId);
+  if (existing) return existing;
 
-  // Create a new profile
-  const defaultName =
-    role === 'sender' ? 'Overseas Worker' : 'Santos Family';
   const { data, error } = await supabase
     .from('profiles')
     .insert({
       device_id: deviceId,
-      display_name: defaultName,
-      role,
+      display_name: 'Overseas Worker',
+      role: 'sender',
     })
     .select('*')
     .single();
-
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as Profile;
+}
+
+function persistProfile(profile: Profile | null) {
+  try {
+    if (profile) {
+      window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    } else {
+      window.localStorage.removeItem(PROFILE_KEY);
+    }
+  } catch {
+    // ignore
+  }
 }
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileChecked, setProfileChecked] = useState(false);
   const [deviceId, setDeviceId] = useState('');
   const [loading, setLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
@@ -112,16 +123,13 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const loadProfile = useCallback(async (did: string, r: Role) => {
     setProfileError(null);
     try {
-      const p = await ensureProfile(did, r);
+      const p = r === 'sender' ? await ensureSenderProfile(did) : await findProfile(did);
       setProfile(p);
-      try {
-        window.localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
-      } catch {
-        // ignore
-      }
+      persistProfile(p);
+      setProfileChecked(true);
     } catch (err) {
       setProfileError(
-        err instanceof Error ? err.message : 'Could not set up your profile.'
+        err instanceof Error ? err.message : 'Could not load your profile.'
       );
     }
   }, []);
@@ -140,24 +148,22 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       }
 
       if (r && deviceId) {
+        setProfileChecked(false);
         await loadProfile(deviceId, r);
       } else if (!r) {
         setProfile(null);
-        try {
-          window.localStorage.removeItem(PROFILE_KEY);
-        } catch {
-          // ignore
-        }
+        setProfileChecked(false);
+        persistProfile(null);
       }
     },
     [deviceId, loadProfile]
   );
 
   useEffect(() => {
-    if (hydrated && deviceId && role && !profile) {
+    if (hydrated && deviceId && role && !profile && !profileChecked) {
       loadProfile(deviceId, role);
     }
-  }, [hydrated, deviceId, role, profile, loadProfile]);
+  }, [hydrated, deviceId, role, profile, profileChecked, loadProfile]);
 
   const clearRole = useCallback(() => setRole(null), [setRole]);
 
@@ -165,6 +171,28 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     if (!deviceId || !role) return;
     await loadProfile(deviceId, role);
   }, [deviceId, role, loadProfile]);
+
+  const createRecipientProfile = useCallback(
+    async (name: string, email: string) => {
+      if (!deviceId) throw new Error('Your device is not ready yet. Please try again.');
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          device_id: deviceId,
+          display_name: name,
+          email,
+          role: 'recipient',
+        })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      const p = data as Profile;
+      setProfile(p);
+      setProfileChecked(true);
+      persistProfile(p);
+    },
+    [deviceId]
+  );
 
   if (!hydrated) {
     return (
@@ -176,7 +204,18 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   return (
     <RoleContext.Provider
-      value={{ role, profile, deviceId, setRole, clearRole, refreshProfile, profileError, loading }}
+      value={{
+        role,
+        profile,
+        profileChecked,
+        deviceId,
+        setRole,
+        clearRole,
+        refreshProfile,
+        createRecipientProfile,
+        profileError,
+        loading,
+      }}
     >
       {children}
     </RoleContext.Provider>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase, Bill } from '@/lib/supabase';
 import { useRole } from '@/lib/role-context';
 import { ConnectionPanel } from '@/components/connection-panel';
+import { RecipientProfileForm } from '@/components/recipient-profile-form';
 import {
   PlusCircle,
   Trash2,
@@ -28,7 +29,7 @@ const CATEGORIES = [
 const CURRENCIES = ['PHP', 'MXN', 'INR', 'VND', 'NGN', 'KES', 'USD'];
 
 export function RecipientDashboard() {
-  const { profile, profileError } = useRole();
+  const { profile, profileError, profileChecked } = useRole();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -104,6 +105,10 @@ export function RecipientDashboard() {
     if (error) setError(error.message);
     else setBills((b) => b.filter((x) => x.id !== id));
   };
+
+  if (!profile && profileChecked) {
+    return <RecipientProfileForm />;
+  }
 
   const pending = bills.filter((b) => b.status === 'pending');
   const paid = bills.filter((b) => b.status === 'paid');
@@ -310,23 +315,6 @@ export function RecipientDashboard() {
           </div>
         </div>
       </div>
-
-      <style>{`
-        .remita-input {
-          width: 100%;
-          border: 1px solid black;
-          background: white;
-          padding: 0.55rem 0.7rem;
-          font-family: 'Times New Roman', serif;
-          font-size: 0.95rem;
-          color: black;
-          outline: none;
-        }
-        .remita-input:focus {
-          border-color: hsl(45 70% 44%);
-          box-shadow: 0 0 0 1px hsl(45 70% 44%);
-        }
-      `}</style>
     </main>
   );
 }

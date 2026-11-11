@@ -26,6 +26,7 @@ export type Profile = {
   id: string;
   device_id: string;
   display_name: string;
+  email: string | null;
   role: 'recipient' | 'sender';
   created_at: string;
 };

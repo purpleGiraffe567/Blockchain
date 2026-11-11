@@ -90,6 +90,20 @@
   .surface {
     @apply border border-black bg-white;
   }
+  .remita-input {
+    width: 100%;
+    border: 1px solid black;
+    background: white;
+    padding: 0.55rem 0.7rem;
+    font-family: 'Times New Roman', serif;
+    font-size: 0.95rem;
+    color: black;
+    outline: none;
+  }
+  .remita-input:focus {
+    border-color: hsl(45 70% 44%);
+    box-shadow: 0 0 0 1px hsl(45 70% 44%);
+  }
 }
 
 @layer utilities {

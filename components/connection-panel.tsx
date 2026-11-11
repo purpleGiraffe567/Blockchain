@@ -8,7 +8,6 @@ import {
   Plus,
   Loader2,
   Check,
-  X,
   Copy,
   KeyRound,
   Users,
@@ -16,6 +15,14 @@ import {
   AlertCircle,
   Clock,
 } from 'lucide-react';
+
+function friendlyLinkError(err: unknown): string {
+  const message = err instanceof Error ? err.message : '';
+  if (!message || /fetch|network/i.test(message)) {
+    return 'Could not reach the server. Check your connection and try again.';
+  }
+  return message;
+}
 
 export function ConnectionPanel() {
   const { role, profile, refreshProfile } = useRole();
@@ -110,7 +117,7 @@ export function ConnectionPanel() {
       if (!row) throw new Error('That code did not link any account. Please try again.');
       setVerifyMsg({
         type: 'success',
-        text: `Connected to ${row.out_sender_display}. Their account is now linked to yours.`,
+        text: `You are now linked to ${row.out_sender_display}. They can see and pay your bills.`,
       });
       setEnteredCode('');
       await loadConnections();
@@ -118,7 +125,7 @@ export function ConnectionPanel() {
     } catch (err) {
       setVerifyMsg({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Verification failed',
+        text: friendlyLinkError(err),
       });
     }
     setVerifying(false);
@@ -279,18 +286,24 @@ export function ConnectionPanel() {
 
             {verifyMsg && (
               <div
-                className={`flex items-start gap-2 border px-3 py-2 text-sm ${
+                role="status"
+                className={`flex items-start gap-3 border px-4 py-3 text-sm ${
                   verifyMsg.type === 'success'
-                    ? 'border-black bg-black/5'
-                    : 'border-black bg-black/5'
+                    ? 'border-black bg-black text-white'
+                    : 'border-black bg-white text-black'
                 }`}
               >
                 {verifyMsg.type === 'success' ? (
                   <Check className="mt-0.5 h-4 w-4 shrink-0" />
                 ) : (
-                  <X className="mt-0.5 h-4 w-4 shrink-0" />
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 )}
-                <span>{verifyMsg.text}</span>
+                <div>
+                  <p className="font-bold">
+                    {verifyMsg.type === 'success' ? 'Family member linked' : 'Could not link account'}
+                  </p>
+                  <p className="mt-0.5 opacity-80">{verifyMsg.text}</p>
+                </div>
               </div>
             )}
 
