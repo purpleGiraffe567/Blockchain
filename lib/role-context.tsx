@@ -54,13 +54,13 @@ async function ensureProfile(
   deviceId: string,
   role: Role
 ): Promise<Profile> {
-  // Try to find an existing profile for this device
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from('profiles')
     .select('*')
     .eq('device_id', deviceId)
     .maybeSingle();
 
+  if (lookupError) throw lookupError;
   if (existing) {
     return existing as Profile;
   }
@@ -109,6 +109,23 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
+  const loadProfile = useCallback(async (did: string, r: Role) => {
+    setProfileError(null);
+    try {
+      const p = await ensureProfile(did, r);
+      setProfile(p);
+      try {
+        window.localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+      } catch {
+        // ignore
+      }
+    } catch (err) {
+      setProfileError(
+        err instanceof Error ? err.message : 'Could not set up your profile.'
+      );
+    }
+  }, []);
+
   const setRole = useCallback(
     async (r: Role | null) => {
       setRoleState(r);
@@ -123,20 +140,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       }
 
       if (r && deviceId) {
-        setProfileError(null);
-        try {
-          const p = await ensureProfile(deviceId, r);
-          setProfile(p);
-          try {
-            window.localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
-          } catch {
-            // ignore
-          }
-        } catch (err) {
-          setProfileError(
-            err instanceof Error ? err.message : 'Could not set up your profile.'
-          );
-        }
+        await loadProfile(deviceId, r);
       } else if (!r) {
         setProfile(null);
         try {
@@ -146,31 +150,21 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [deviceId]
+    [deviceId, loadProfile]
   );
+
+  useEffect(() => {
+    if (hydrated && deviceId && role && !profile) {
+      loadProfile(deviceId, role);
+    }
+  }, [hydrated, deviceId, role, profile, loadProfile]);
 
   const clearRole = useCallback(() => setRole(null), [setRole]);
 
   const refreshProfile = useCallback(async () => {
-    if (!deviceId) return;
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('device_id', deviceId)
-        .maybeSingle();
-      if (data) {
-        setProfile(data as Profile);
-        try {
-          window.localStorage.setItem(PROFILE_KEY, JSON.stringify(data));
-        } catch {
-          // ignore
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, [deviceId]);
+    if (!deviceId || !role) return;
+    await loadProfile(deviceId, role);
+  }, [deviceId, role, loadProfile]);
 
   if (!hydrated) {
     return (
