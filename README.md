@@ -67,11 +67,10 @@ Remita is a cross-border bill payment demo. A family member in their home countr
 
 | Resource | Details |
 |---|---|
-| **Live application** | *Add your deployed application URL here* |
 | **Stellar Testnet Contract ID** | `CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6` |
 | **Stellar Lab Explorer** | [View contract on Stellar Lab](https://lab.stellar.org/r/testnet/contract/CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6) |
 | **Deployment transaction** | [View transaction on Stellar.Expert](https://stellar.expert/explorer/testnet/tx/97c0f59b0c5129f7900f6c1d96269af11ac6158064847a569c7b634ddb3b9c07) |
-| **1-minute demo** | *Add your Loom or YouTube link here* |
+| **1-minute demo** | *Add YouTube link here* |
 
 ## 🛠️ Tech Stack
 
