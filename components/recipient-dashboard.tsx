@@ -41,8 +41,12 @@ export function RecipientDashboard() {
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('PHP');
   const [category, setCategory] = useState('utility');
-  const [recipientName, setRecipientName] = useState('Santos Family');
+  const [recipientName, setRecipientName] = useState('');
   const [dueDate, setDueDate] = useState('');
+
+  useEffect(() => {
+    if (profile?.display_name) setRecipientName(profile.display_name);
+  }, [profile]);
 
   const loadBills = useCallback(async () => {
     if (!profile) {

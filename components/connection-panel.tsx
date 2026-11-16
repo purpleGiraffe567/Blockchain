@@ -33,6 +33,7 @@ export function ConnectionPanel() {
   const [generating, setGenerating] = useState(false);
   const [otpCode, setOtpCode] = useState<string | null>(null);
   const [otpExpiry, setOtpExpiry] = useState<string | null>(null);
+  const [otpSecondsRemaining, setOtpSecondsRemaining] = useState(0);
   const [copied, setCopied] = useState(false);
 
   // OTP verification (recipient)
@@ -82,7 +83,7 @@ export function ConnectionPanel() {
     loadConnections();
   }, [loadConnections]);
 
-  const generateOtp = async () => {
+  const generateOtp = useCallback(async () => {
     if (!profile) return;
     setGenerating(true);
     setError(null);
@@ -97,11 +98,45 @@ export function ConnectionPanel() {
       if (!row) throw new Error('Could not create a code. Please try again.');
       setOtpCode(row.otp_code);
       setOtpExpiry(row.otp_expires_at);
+      setOtpSecondsRemaining(
+        Math.max(
+          0,
+          Math.ceil((Date.parse(row.otp_expires_at) - Date.now()) / 1000)
+        )
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate OTP');
     }
     setGenerating(false);
-  };
+  }, [profile]);
+
+  useEffect(() => {
+    if (role !== 'sender' || !otpCode || !otpExpiry) return;
+
+    const timeout = setTimeout(
+      () => void generateOtp(),
+      Math.max(0, Date.parse(otpExpiry) - Date.now())
+    );
+    return () => clearTimeout(timeout);
+  }, [generateOtp, otpCode, otpExpiry, role]);
+
+  useEffect(() => {
+    if (role !== 'sender' || !otpCode || !otpExpiry) {
+      setOtpSecondsRemaining(0);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const secondsRemaining = Math.ceil(
+        (Date.parse(otpExpiry) - Date.now()) / 1000
+      );
+      setOtpSecondsRemaining(Math.max(0, secondsRemaining));
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [otpCode, otpExpiry, role]);
 
   const verifyOtp = async () => {
     if (!profile || !enteredCode.trim()) return;
@@ -115,6 +150,7 @@ export function ConnectionPanel() {
       if (error) throw error;
       const row = data?.[0];
       if (!row) throw new Error('That code did not link any account. Please try again.');
+      if (row.out_error) throw new Error(row.out_error);
       setVerifyMsg({
         type: 'success',
         text: `You are now linked to ${row.out_sender_display}. They can see and pay your bills.`,
@@ -253,7 +289,9 @@ export function ConnectionPanel() {
                   </button>
                   <span className="flex items-center gap-1 text-xs text-white/50">
                     <Clock className="h-3.5 w-3.5" />
-                    Expires in 10 min
+                    {`Code resets in ${Math.floor(otpSecondsRemaining / 60)}:${String(
+                      otpSecondsRemaining % 60
+                    ).padStart(2, '0')}`}
                   </span>
                 </div>
               </div>
