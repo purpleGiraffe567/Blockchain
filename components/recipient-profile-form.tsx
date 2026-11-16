@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRole } from '@/lib/role-context';
 import { Loader2, User, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 
-const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
 
 export function RecipientProfileForm() {
   const { createRecipientProfile } = useRole();
@@ -21,8 +21,8 @@ export function RecipientProfileForm() {
       setError('Please enter your name.');
       return;
     }
-    if (!EMAIL_PATTERN.test(trimmedEmail)) {
-      setError('Please enter a valid email address.');
+    if (!EMAIL_PATTERN.test(trimmedEmail) || trimmedEmail.length > 254) {
+      setError('Please enter a valid email address, such as name@example.com.');
       return;
     }
     setSubmitting(true);
