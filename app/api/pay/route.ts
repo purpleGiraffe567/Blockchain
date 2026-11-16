@@ -16,6 +16,11 @@ type PayResult = {
   message: string;
 };
 
+type PaymentError = Error & {
+  code?: string;
+  fundingAddress?: string;
+};
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -72,10 +77,16 @@ export async function POST(req: NextRequest) {
       message: result.message,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    const paymentError = err instanceof Error ? (err as PaymentError) : null;
+    const message = paymentError?.message || 'Unknown error';
     return NextResponse.json(
-      { error: message, success: false },
-      { status: 500 }
+      {
+        error: message,
+        success: false,
+        code: paymentError?.code,
+        fundingAddress: paymentError?.fundingAddress,
+      },
+      { status: paymentError?.code === 'TESTNET_USDC_REQUIRED' ? 400 : 500 }
     );
   }
 }

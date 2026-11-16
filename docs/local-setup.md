@@ -35,7 +35,8 @@ NEXT_PUBLIC_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 
 # Server-only Stellar Testnet payment configuration
 STELLAR_SENDER_SECRET=<funded-testnet-sender-secret>
-STELLAR_USDC_ISSUER=<testnet-usdc-issuer-public-key>
+# Defaults to the official Stellar Testnet USDC issuer; override only if needed.
+# STELLAR_USDC_ISSUER=<testnet-usdc-issuer-public-key>
 STELLAR_LOCAL_ASSET_CODE=PHP
 STELLAR_LOCAL_ASSET_ISSUER=<testnet-local-asset-issuer-public-key>
 STELLAR_PAYOUT_DESTINATION=<testnet-payout-account-public-key>
@@ -45,7 +46,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://uxnvilrmheejgpvajdhi.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_AKpEw9Rpdmo0vHbHtcKzVQ_t5Fe7Kj6
 ```
 
-The sender account must have a USDC trustline, enough USDC for the payment, and XLM for fees. The payout account must exist on Testnet and accept the local asset, or USDC if no path is available. The issuer accounts must also exist on Testnet. Keep `STELLAR_SENDER_SECRET` server-side; never put it, a Supabase service-role key, or any other private secret in a `NEXT_PUBLIC_` variable. Restart the server after changing these values.
+The sender account needs XLM for fees; the app creates its USDC trustline automatically. If it has insufficient USDC, the app provides its public address and a link to Circle's Testnet Faucet. The faucet requires user verification. The payout account must exist on Testnet and accept the local asset, or USDC if no path is available. Keep `STELLAR_SENDER_SECRET` server-side; never put it, a Supabase service-role key, or any other private secret in a `NEXT_PUBLIC_` variable. Restart the server after changing these values.
 
 ## 3. Install Dependencies
 

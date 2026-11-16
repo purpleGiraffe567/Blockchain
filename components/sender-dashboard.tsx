@@ -58,6 +58,7 @@ type PayState = {
 type PaymentNotice = {
   type: 'success' | 'error';
   message: string;
+  fundingAddress?: string;
 };
 
 export function SenderDashboard() {
@@ -140,7 +141,7 @@ export function SenderDashboard() {
   }, [loadData, profile]);
 
   useEffect(() => {
-    if (!paymentNotice) return;
+    if (!paymentNotice || paymentNotice.fundingAddress) return;
     const timeout = setTimeout(() => setPaymentNotice(null), 6000);
     return () => clearTimeout(timeout);
   }, [paymentNotice]);
@@ -148,6 +149,7 @@ export function SenderDashboard() {
   const payBill = async (bill: Bill) => {
     setPaymentNotice(null);
     setPayState({ status: 'paying', billId: bill.id });
+    let fundingAddress: string | undefined;
     try {
       const res = await fetch('/api/pay', {
         method: 'POST',
@@ -160,6 +162,9 @@ export function SenderDashboard() {
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
+        if (typeof json.fundingAddress === 'string') {
+          fundingAddress = json.fundingAddress;
+        }
         throw new Error(json.error || 'Payment failed on the server.');
       }
 
@@ -190,7 +195,11 @@ export function SenderDashboard() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setPayState({ status: 'error', billId: bill.id, error: message });
-      setPaymentNotice({ type: 'error', message: `Payment unsuccessful: ${message}` });
+      setPaymentNotice({
+        type: 'error',
+        message: `Payment unsuccessful: ${message}`,
+        fundingAddress,
+      });
     }
   };
 
@@ -473,26 +482,45 @@ export function SenderDashboard() {
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4">
           <div
             role={paymentNotice.type === 'error' ? 'alert' : 'status'}
-            className={`pointer-events-auto flex w-full max-w-xl items-start gap-3 border border-black px-4 py-3 shadow-lg ${
+            className={`pointer-events-auto w-full max-w-xl border border-black px-4 py-3 shadow-lg ${
               paymentNotice.type === 'success'
                 ? 'bg-black text-white'
                 : 'bg-white text-black'
             }`}
           >
-            {paymentNotice.type === 'success' ? (
-              <Check className="mt-0.5 h-4 w-4 shrink-0" />
-            ) : (
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="flex items-start gap-3">
+              {paymentNotice.type === 'success' ? (
+                <Check className="mt-0.5 h-4 w-4 shrink-0" />
+              ) : (
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              )}
+              <p className="flex-1 text-sm">{paymentNotice.message}</p>
+              <button
+                type="button"
+                onClick={() => setPaymentNotice(null)}
+                aria-label="Dismiss payment message"
+                className="text-current/70 hover:text-current"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {paymentNotice.fundingAddress && (
+              <div className="mt-3 border-t border-current/20 pt-3 text-sm">
+                <p className="mb-1">Testnet sender address:</p>
+                <code className="block break-all">{paymentNotice.fundingAddress}</code>
+                <a
+                  href="https://faucet.circle.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-block underline underline-offset-4"
+                >
+                  Get USDC from Circle Testnet Faucet
+                </a>
+                <p className="mt-1 text-xs opacity-70">
+                  Select USDC and Stellar Testnet, complete verification, then retry.
+                </p>
+              </div>
             )}
-            <p className="flex-1 text-sm">{paymentNotice.message}</p>
-            <button
-              type="button"
-              onClick={() => setPaymentNotice(null)}
-              aria-label="Dismiss payment message"
-              className="text-current/70 hover:text-current"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </div>
         </div>
       )}
