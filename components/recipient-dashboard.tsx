@@ -105,6 +105,14 @@ export function RecipientDashboard() {
     else setBills((b) => b.filter((x) => x.id !== id));
   };
 
+  if (!profile && !profileChecked && !profileError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </main>
+    );
+  }
+
   if (!profile && profileChecked) {
     return <RecipientProfileForm />;
   }
