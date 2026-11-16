@@ -8,8 +8,6 @@ A demo that helps families pay utility bills across borders using a Stellar wall
 
 <p>
   <a href="https://lab.stellar.org/r/testnet/contract/CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6"><strong>🔗 View Stellar Contract</strong></a>
-  &nbsp; · &nbsp;
-  <a href="https://stellar.expert/explorer/testnet/tx/97c0f59b0c5129f7900f6c1d96269af11ac6158064847a569c7b634ddb3b9c07"><strong>🧾 View Deployment Transaction</strong></a>
 </p>
 
 </div>
@@ -54,8 +52,7 @@ Use the hosted deployment—no local installation or setup is needed:
 | **Remita app** | [Open the Vercel deployment](https://blockchain-lilac-nine.vercel.app/) |
 | **Stellar Testnet Contract ID** | `CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6` |
 | **Stellar Lab Explorer** | [View contract on Stellar Lab](https://lab.stellar.org/r/testnet/contract/CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6) |
-| **Deployment transaction** | [View transaction on Stellar.Expert](https://stellar.expert/explorer/testnet/tx/97c0f59b0c5129f7900f6c1d96269af11ac6158064847a569c7b634ddb3b9c07) |
-| **1-minute demo** | *Add YouTube link here* |
+| **Video demo** | [Watch the video demo](https://youtu.be/Bh--4je9KaA) |
 
 ## 🛠️ Tech Stack
 
