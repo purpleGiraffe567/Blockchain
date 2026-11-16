@@ -39,6 +39,10 @@ const ROLE_KEY = 'remita.role';
 const DEVICE_KEY = 'remita.device_id';
 const PROFILE_KEY = 'remita.profile';
 
+function getRoleDeviceId(deviceId: string, role: Role) {
+  return `${deviceId}:${role}`;
+}
+
 function getOrCreateDeviceId(): string {
   if (typeof window === 'undefined') return '';
   try {
@@ -53,24 +57,35 @@ function getOrCreateDeviceId(): string {
   }
 }
 
-async function findProfile(deviceId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
+async function findProfile(deviceId: string, role: Role): Promise<Profile | null> {
+  const { data: roleProfile, error: roleError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('device_id', getRoleDeviceId(deviceId, role))
+    .eq('role', role)
+    .maybeSingle();
+  if (roleError) throw new Error(roleError.message);
+  if (roleProfile) return roleProfile as Profile;
+
+  // Keep profiles created before role-scoped device IDs attached to their role.
+  const { data: legacyProfile, error: legacyError } = await supabase
     .from('profiles')
     .select('*')
     .eq('device_id', deviceId)
+    .eq('role', role)
     .maybeSingle();
-  if (error) throw new Error(error.message);
-  return (data as Profile) ?? null;
+  if (legacyError) throw new Error(legacyError.message);
+  return (legacyProfile as Profile) ?? null;
 }
 
 async function ensureSenderProfile(deviceId: string): Promise<Profile> {
-  const existing = await findProfile(deviceId);
+  const existing = await findProfile(deviceId, 'sender');
   if (existing) return existing;
 
   const { data, error } = await supabase
     .from('profiles')
     .insert({
-      device_id: deviceId,
+      device_id: getRoleDeviceId(deviceId, 'sender'),
       display_name: 'Overseas Worker',
       role: 'sender',
     })
@@ -111,7 +126,12 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         setRoleState(storedRole);
       }
       if (storedProfile) {
-        setProfile(JSON.parse(storedProfile));
+        const cachedProfile = JSON.parse(storedProfile) as Profile;
+        if (cachedProfile.role === storedRole) {
+          setProfile(cachedProfile);
+        } else {
+          window.localStorage.removeItem(PROFILE_KEY);
+        }
       }
     } catch {
       // ignore
@@ -123,7 +143,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const loadProfile = useCallback(async (did: string, r: Role) => {
     setProfileError(null);
     try {
-      const p = r === 'sender' ? await ensureSenderProfile(did) : await findProfile(did);
+      const p =
+        r === 'sender'
+          ? await ensureSenderProfile(did)
+          : await findProfile(did, 'recipient');
       setProfile(p);
       persistProfile(p);
       setProfileChecked(true);
@@ -148,6 +171,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       }
 
       if (r && deviceId) {
+        setProfile(null);
         setProfileChecked(false);
         await loadProfile(deviceId, r);
       } else if (!r) {
@@ -175,17 +199,34 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const createRecipientProfile = useCallback(
     async (name: string, email: string) => {
       if (!deviceId) throw new Error('Your device is not ready yet. Please try again.');
+      const existing = await findProfile(deviceId, 'recipient');
+      if (existing) {
+        setProfile(existing);
+        setProfileChecked(true);
+        persistProfile(existing);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .insert({
-          device_id: deviceId,
+          device_id: getRoleDeviceId(deviceId, 'recipient'),
           display_name: name,
           email,
           role: 'recipient',
         })
         .select('*')
         .single();
-      if (error) throw new Error(error.message);
+      if (error) {
+        const concurrentProfile = await findProfile(deviceId, 'recipient');
+        if (concurrentProfile) {
+          setProfile(concurrentProfile);
+          setProfileChecked(true);
+          persistProfile(concurrentProfile);
+          return;
+        }
+        throw new Error(error.message);
+      }
       const p = data as Profile;
       setProfile(p);
       setProfileChecked(true);
