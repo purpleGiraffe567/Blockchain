@@ -43,13 +43,15 @@ export function ConnectionPanel() {
   // Error
   const [error, setError] = useState<string | null>(null);
 
-  const loadConnections = useCallback(async () => {
+  const loadConnections = useCallback(async (silent = false) => {
     if (!profile) {
       setLoadingConns(false);
       return;
     }
-    setLoadingConns(true);
-    setError(null);
+    if (!silent) {
+      setLoadingConns(true);
+      setError(null);
+    }
     try {
       if (role === 'sender') {
         // Sender sees connected recipients
@@ -81,6 +83,12 @@ export function ConnectionPanel() {
   useEffect(() => {
     loadConnections();
   }, [loadConnections]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const id = setInterval(() => loadConnections(true), 5000);
+    return () => clearInterval(id);
+  }, [profile, loadConnections]);
 
   const generateOtp = async () => {
     if (!profile) return;

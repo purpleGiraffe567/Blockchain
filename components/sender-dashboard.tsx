@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase, Bill, ConnectionWithProfile } from '@/lib/supabase';
 import { useRole } from '@/lib/role-context';
 import { ConnectionPanel } from '@/components/connection-panel';
@@ -16,6 +16,7 @@ import {
   ExternalLink,
   AlertCircle,
   Users,
+  X,
 } from 'lucide-react';
 
 const FX_RATES: Record<string, number> = {
@@ -51,14 +52,18 @@ export function SenderDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payState, setPayState] = useState<PayState>({ status: 'idle', billId: null });
+  const [newlyLinked, setNewlyLinked] = useState<string | null>(null);
+  const knownConnectionIds = useRef<Set<string> | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!profile) {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       // Load active connections (sender → recipients)
       const { data: conns, error: connErr } = await supabase
@@ -74,6 +79,17 @@ export function SenderDashboard() {
       }
       const activeConns = (conns as ConnectionWithProfile[]) || [];
       setConnections(activeConns);
+
+      const known = knownConnectionIds.current;
+      if (known) {
+        const fresh = activeConns.filter((c) => !known.has(c.id));
+        if (fresh.length > 0) {
+          setNewlyLinked(
+            fresh.map((c) => c.recipient?.display_name || 'A family member').join(', ')
+          );
+        }
+      }
+      knownConnectionIds.current = new Set(activeConns.map((c) => c.id));
 
       const recipientIds = activeConns.map((c) => c.recipient_id);
       if (recipientIds.length === 0) {
@@ -99,6 +115,12 @@ export function SenderDashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const id = setInterval(() => loadData({ silent: true }), 5000);
+    return () => clearInterval(id);
+  }, [loadData, profile]);
 
   const payBill = async (bill: Bill) => {
     setPayState({ status: 'paying', billId: bill.id });
@@ -232,7 +254,7 @@ export function SenderDashboard() {
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-2xl font-bold">Bills to Cover</h2>
               <button
-                onClick={loadData}
+                onClick={() => loadData()}
                 className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-black"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
@@ -244,6 +266,56 @@ export function SenderDashboard() {
               <div className="mb-6 flex items-start gap-3 border border-black bg-black/5 px-4 py-3">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {newlyLinked && (
+              <div
+                role="status"
+                className="mb-6 flex items-start gap-3 border border-black bg-black px-4 py-4 text-white"
+              >
+                <Check className="mt-0.5 h-5 w-5 shrink-0" />
+                <div className="flex-1">
+                  <p className="font-bold">Family member connected</p>
+                  <p className="mt-0.5 text-sm text-white/80">
+                    {newlyLinked} is now linked to your account. Their bills will
+                    appear here as they upload them.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setNewlyLinked(null)}
+                  aria-label="Dismiss"
+                  className="text-white/70 transition-colors hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {connections.length > 0 && (
+              <div className="mb-8 border border-black">
+                <div className="flex items-center gap-3 border-b border-black bg-black px-5 py-3 text-white">
+                  <Users className="h-4 w-4" />
+                  <p className="text-xs uppercase tracking-[0.18em]">Connected Family</p>
+                </div>
+                <ul className="divide-y divide-black/20">
+                  {connections.map((conn) => (
+                    <li
+                      key={conn.id}
+                      className="flex items-center justify-between gap-4 px-5 py-4"
+                    >
+                      <div>
+                        <p className="font-bold">{conn.recipient?.display_name || 'Unknown'}</p>
+                        <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground">
+                          Linked {new Date(conn.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span className="flex items-center gap-1 border border-black bg-black px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-white">
+                        <Check className="h-3 w-3" /> Connected
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

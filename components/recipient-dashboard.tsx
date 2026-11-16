@@ -41,7 +41,6 @@ export function RecipientDashboard() {
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('PHP');
   const [category, setCategory] = useState('utility');
-  const [recipientName, setRecipientName] = useState('Santos Family');
   const [dueDate, setDueDate] = useState('');
 
   const loadBills = useCallback(async () => {
@@ -84,7 +83,7 @@ export function RecipientDashboard() {
       amount_due: amt,
       currency,
       category,
-      recipient_name: recipientName,
+      recipient_name: profile.display_name,
       due_date: dueDate || null,
       recipient_id: profile.id,
     });
@@ -228,10 +227,14 @@ export function RecipientDashboard() {
                 </Field>
                 <Field label="Recipient / Family Name">
                   <input
-                    className="remita-input"
-                    value={recipientName}
-                    onChange={(e) => setRecipientName(e.target.value)}
+                    className="remita-input bg-black/5"
+                    value={profile?.display_name ?? ''}
+                    readOnly
+                    tabIndex={-1}
                   />
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Taken from your profile.
+                  </span>
                 </Field>
                 <Field label="Due Date (optional)">
                   <input
