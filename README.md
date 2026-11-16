@@ -1,32 +1,99 @@
-# Remita
+<div align="center">
 
-Remita is a cross-border bill payment demo. A family member in the home country uploads utility bills, and an overseas family member sees those bills and pays them from a Stellar wallet using USDC on the Stellar Testnet.
+# 🌍 Remita
 
-## Roles
+### Cross-border bill payments, powered by Stellar
 
-- **Family Member (Recipient):** uploads bills (biller, account number, amount, currency, category, due date), tracks which are Pending or Paid, and generates nothing sensitive. Enters a one-time code from an overseas family member to link accounts.
-- **Overseas Worker (Sender):** generates a one-time connection code, shares it with a family member, and sees the bills of every linked family member. Pays a bill with "Pay via Stellar".
+A demo that helps families pay utility bills across borders using a Stellar wallet and USDC on the Stellar Testnet.
 
-Use "Switch" in the header to move between roles. Identity is tied to the browser, so each browser keeps its own profile.
+<p>
+  <a href="https://lab.stellar.org/r/testnet/contract/CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6"><strong>🔗 View Stellar Contract</strong></a>
+  &nbsp; · &nbsp;
+  <a href="https://stellar.expert/explorer/testnet/tx/97c0f59b0c5129f7900f6c1d96269af11ac6158064847a569c7b634ddb3b9c07"><strong>🧾 View Deployment Transaction</strong></a>
+</p>
 
-## Connecting accounts
+</div>
 
-1. The overseas worker opens the Connected Family panel and selects Generate Connection Code.
-2. The family member opens the Linked Senders panel and enters the six-digit code, then selects Link.
-3. Codes expire after 10 minutes and can only be used once. Several family members can link to one sender, and either side can remove a connection.
+---
 
-## Paying a bill
+## 👋 Welcome
 
-Senders select Pay via Stellar on a pending bill. The app creates a throwaway Testnet wallet, funds it through Friendbot, and submits a path payment. When the payment succeeds, the bill is marked Paid and links to the transaction on the Stellar Testnet explorer.
+Remita is a cross-border bill payment demo. A family member in their home country uploads utility bills, and an overseas family member views those bills and pays them from a Stellar wallet using USDC on the Stellar Testnet.
 
-## Data and services
+> **⚠️ Demo only:** Remita runs on Stellar Testnet and must not be used with real funds.
 
-- **Supabase** stores profiles, bills, connections, and one-time codes. The connection is already provisioned, and no keys need to be entered by hand.
-- **Stellar Testnet** (Horizon) requires no API key. Test accounts are funded automatically.
-- The payout issuers and anchor account are placeholder Testnet keys, not a real anchor integration. Treat the currency routing as a demonstration.
+## 🧭 Documentation
 
-## Limitations
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🚀 Use the App</h3>
+      Learn how the two roles work, connect family accounts, and pay a bill.
+      <br><br>
+      <a href="docs/using-the-app.md">Open the app guide →</a>
+    </td>
+    <td width="50%" valign="top">
+      <h3>💻 Local Setup</h3>
+      Configure your environment, install dependencies, and run Remita locally.
+      <br><br>
+      <a href="docs/local-setup.md">Open the local setup guide →</a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🪟 Windows</h3>
+      Windows-specific prerequisites and installation commands.
+      <br><br>
+      <a href="docs/windows-setup.md">Open Windows setup →</a>
+    </td>
+    <td width="50%" valign="top">
+      <h3>🍎 macOS</h3>
+      macOS-specific prerequisites and installation commands.
+      <br><br>
+      <a href="docs/macos-setup.md">Open macOS setup →</a>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <h3>⛓️ Smart Contract Build & Deployment</h3>
+      Build, deploy, and test the Soroban contract on Stellar Testnet.
+      <br><br>
+      <a href="docs/smart-contract.md">Open the smart contract guide →</a>
+    </td>
+  </tr>
+</table>
 
-- Identity is device-based. There is no sign-in, so anyone with the app can act as either role.
-- Six-digit codes have no attempt limit, so they are not protected against guessing over many tries.
-- This is a Testnet demo and must not be used with real funds.
+## 🔗 Live Prototype & Blockchain Details
+
+| Resource | Details |
+|---|---|
+| **Live application** | *Add your deployed application URL here* |
+| **Stellar Testnet Contract ID** | `CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6` |
+| **Stellar Lab Explorer** | [View contract on Stellar Lab](https://lab.stellar.org/r/testnet/contract/CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6) |
+| **Deployment transaction** | [View transaction on Stellar.Expert](https://stellar.expert/explorer/testnet/tx/97c0f59b0c5129f7900f6c1d96269af11ac6158064847a569c7b634ddb3b9c07) |
+| **1-minute demo** | *Add your Loom or YouTube link here* |
+
+## 🛠️ Tech Stack
+
+| Component | Technology |
+|---|---|
+| **Frontend** | Next.js (App Router), React, Tailwind CSS |
+| **Smart contracts** | Rust, Soroban SDK, WebAssembly (`wasm32v1-none`) |
+| **Blockchain** | Stellar Testnet & Horizon API |
+| **Database & authentication** | Supabase |
+| **Wallet integration** | `@creit.tech/stellar-wallets-kit`, `@stellar/stellar-sdk` |
+
+## ⚠️ Important Limitations
+
+- Identity is device-based. There is no sign-in, so anyone with access to the app can act as either role.
+- Six-digit connection codes have no attempt limit, so they are not protected against repeated guessing attempts.
+- The payout issuers and anchor account are placeholder Testnet keys, not a real anchor integration. Currency routing is for demonstration purposes.
+- This is a Testnet demo. **Do not use it with real funds.**
+
+---
+
+<div align="center">
+
+**Built for demonstration on Stellar Testnet.**
+
+</div>
