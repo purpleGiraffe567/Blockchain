@@ -44,13 +44,15 @@ export function ConnectionPanel() {
   // Error
   const [error, setError] = useState<string | null>(null);
 
-  const loadConnections = useCallback(async () => {
+  const loadConnections = useCallback(async (silent = false) => {
     if (!profile) {
       setLoadingConns(false);
       return;
     }
-    setLoadingConns(true);
-    setError(null);
+    if (!silent) {
+      setLoadingConns(true);
+      setError(null);
+    }
     try {
       if (role === 'sender') {
         // Sender sees connected recipients
@@ -82,6 +84,12 @@ export function ConnectionPanel() {
   useEffect(() => {
     loadConnections();
   }, [loadConnections]);
+
+  useEffect(() => {
+    if (!profile) return;
+    const id = setInterval(() => loadConnections(true), 5000);
+    return () => clearInterval(id);
+  }, [profile, loadConnections]);
 
   const generateOtp = useCallback(async () => {
     if (!profile) return;
@@ -325,11 +333,10 @@ export function ConnectionPanel() {
             {verifyMsg && (
               <div
                 role="status"
-                className={`flex items-start gap-3 border px-4 py-3 text-sm ${
-                  verifyMsg.type === 'success'
+                className={`flex items-start gap-3 border px-4 py-3 text-sm ${verifyMsg.type === 'success'
                     ? 'border-black bg-black text-white'
                     : 'border-black bg-white text-black'
-                }`}
+                  }`}
               >
                 {verifyMsg.type === 'success' ? (
                   <Check className="mt-0.5 h-4 w-4 shrink-0" />

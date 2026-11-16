@@ -88,7 +88,7 @@ export function RecipientDashboard() {
       amount_due: amt,
       currency,
       category,
-      recipient_name: recipientName,
+      recipient_name: profile.display_name,
       due_date: dueDate || null,
       recipient_id: profile.id,
     });
@@ -109,6 +109,14 @@ export function RecipientDashboard() {
     if (error) setError(error.message);
     else setBills((b) => b.filter((x) => x.id !== id));
   };
+
+  if (!profile && !profileChecked && !profileError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </main>
+    );
+  }
 
   if (!profile && profileChecked) {
     return <RecipientProfileForm />;
@@ -150,11 +158,9 @@ export function RecipientDashboard() {
           ].map((s, i) => (
             <div
               key={s.label}
-              className={`px-6 py-6 ${
-                i < 3 ? 'border-b border-black/30 md:border-b-0' : ''
-              } ${i % 4 !== 3 ? 'md:border-r md:border-black/30' : ''} ${
-                i < 2 ? 'border-r border-black/30 md:border-r' : ''
-              } ${i === 2 ? 'border-r border-black/30 md:border-r' : ''}`}
+              className={`px-6 py-6 ${i < 3 ? 'border-b border-black/30 md:border-b-0' : ''
+                } ${i % 4 !== 3 ? 'md:border-r md:border-black/30' : ''} ${i < 2 ? 'border-r border-black/30 md:border-r' : ''
+                } ${i === 2 ? 'border-r border-black/30 md:border-r' : ''}`}
             >
               <p className="editorial-label">{s.label}</p>
               <p className="mt-2 text-3xl font-bold tnum">{s.value}</p>
@@ -232,10 +238,14 @@ export function RecipientDashboard() {
                 </Field>
                 <Field label="Recipient / Family Name">
                   <input
-                    className="remita-input"
-                    value={recipientName}
-                    onChange={(e) => setRecipientName(e.target.value)}
+                    className="remita-input bg-black/5"
+                    value={profile?.display_name ?? ''}
+                    readOnly
+                    tabIndex={-1}
                   />
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Taken from your profile.
+                  </span>
                 </Field>
                 <Field label="Due Date (optional)">
                   <input
