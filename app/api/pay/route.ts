@@ -34,7 +34,7 @@ const FX_RATES: Record<string, number> = {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { billId, amountLocal, currency, senderSecret } = body || {};
+    const { billId, amountLocal, currency } = body || {};
 
     if (typeof billId !== 'string') {
       return NextResponse.json(
@@ -55,7 +55,6 @@ export async function POST(req: NextRequest) {
     const result = (await payBillOnStellar({
       amountLocal: amount,
       currency,
-      senderSecret: senderSecret || undefined,
       fxRate,
     })) as PayResult;
 

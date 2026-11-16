@@ -86,7 +86,7 @@ Remita is a cross-border bill payment demo. A family member in their home countr
 
 - Identity is device-based. There is no sign-in, so anyone with access to the app can act as either role.
 - Six-digit connection codes have no attempt limit, so they are not protected against repeated guessing attempts.
-- The payout issuers and anchor account are placeholder Testnet keys, not a real anchor integration. Currency routing is for demonstration purposes.
+- Testnet payments require provisioned sender, issuer, and payout accounts with the required trustlines and balances. This is not a real anchor integration; currency routing is for demonstration purposes.
 - This is a Testnet demo. **Do not use it with real funds.**
 
 ---
