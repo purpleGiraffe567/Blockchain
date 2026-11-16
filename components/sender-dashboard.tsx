@@ -5,6 +5,16 @@ import { supabase, Bill, ConnectionWithProfile } from '@/lib/supabase';
 import { useRole } from '@/lib/role-context';
 import { ConnectionPanel } from '@/components/connection-panel';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Loader2,
   Check,
   Clock,
@@ -45,6 +55,11 @@ type PayState = {
   error?: string;
 };
 
+type PaymentNotice = {
+  type: 'success' | 'error';
+  message: string;
+};
+
 export function SenderDashboard() {
   const { profile } = useRole();
   const [connections, setConnections] = useState<ConnectionWithProfile[]>([]);
@@ -52,6 +67,8 @@ export function SenderDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payState, setPayState] = useState<PayState>({ status: 'idle', billId: null });
+  const [billToConfirm, setBillToConfirm] = useState<Bill | null>(null);
+  const [paymentNotice, setPaymentNotice] = useState<PaymentNotice | null>(null);
   const [newlyLinked, setNewlyLinked] = useState<string | null>(null);
   const knownConnectionIds = useRef<Set<string> | null>(null);
 
@@ -122,7 +139,14 @@ export function SenderDashboard() {
     return () => clearInterval(id);
   }, [loadData, profile]);
 
+  useEffect(() => {
+    if (!paymentNotice) return;
+    const timeout = setTimeout(() => setPaymentNotice(null), 6000);
+    return () => clearTimeout(timeout);
+  }, [paymentNotice]);
+
   const payBill = async (bill: Bill) => {
+    setPaymentNotice(null);
     setPayState({ status: 'paying', billId: bill.id });
     try {
       const res = await fetch('/api/pay', {
@@ -154,13 +178,19 @@ export function SenderDashboard() {
       if (updErr) {
         setPayState({ status: 'success', billId: bill.id, result: json });
         setError(`Paid on Stellar, but couldn't update bill status: ${updErr.message}`);
+        setPaymentNotice({
+          type: 'success',
+          message: "Payment successful, but the bill status couldn't be updated.",
+        });
       } else {
         setPayState({ status: 'success', billId: bill.id, result: json });
+        setPaymentNotice({ type: 'success', message: 'Payment successful.' });
         await loadData();
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setPayState({ status: 'error', billId: bill.id, error: message });
+      setPaymentNotice({ type: 'error', message: `Payment unsuccessful: ${message}` });
     }
   };
 
@@ -370,7 +400,7 @@ export function SenderDashboard() {
                               (FX_RATES[bill.currency] ?? 56.0)
                             }
                             payState={payState}
-                            onPay={() => payBill(bill)}
+                            onPay={() => setBillToConfirm(bill)}
                           />
                         ))}
                       </div>
@@ -389,6 +419,83 @@ export function SenderDashboard() {
           Stellar Testnet · PathPaymentStrictReceive · Settled in seconds
         </p>
       </footer>
+
+      <AlertDialog
+        open={Boolean(billToConfirm)}
+        onOpenChange={(open) => {
+          if (!open) setBillToConfirm(null);
+        }}
+      >
+        <AlertDialogContent
+          overlayClassName="bg-black/30"
+          className="border-black bg-white sm:max-w-md"
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm payment</AlertDialogTitle>
+            {billToConfirm && (
+              <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                You are paying{' '}
+                <strong className="text-black">
+                  {(
+                    Number(billToConfirm.amount_due) /
+                    (FX_RATES[billToConfirm.currency] ?? 56.0)
+                  ).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  USDC
+                </strong>{' '}
+                for{' '}
+                <strong className="text-black">
+                  {billToConfirm.recipient_name}&apos;s {billToConfirm.biller_name}
+                </strong>
+                . Do you wish to proceed?
+              </AlertDialogDescription>
+            )}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-black px-5 py-3 text-xs uppercase tracking-[0.18em]">
+              No
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="border border-black bg-black px-5 py-3 text-xs uppercase tracking-[0.18em] text-white hover:bg-[hsl(45_70%_44%)]"
+              onClick={() => {
+                if (billToConfirm) void payBill(billToConfirm);
+              }}
+            >
+              Yes, proceed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {paymentNotice && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4">
+          <div
+            role={paymentNotice.type === 'error' ? 'alert' : 'status'}
+            className={`pointer-events-auto flex w-full max-w-xl items-start gap-3 border border-black px-4 py-3 shadow-lg ${
+              paymentNotice.type === 'success'
+                ? 'bg-black text-white'
+                : 'bg-white text-black'
+            }`}
+          >
+            {paymentNotice.type === 'success' ? (
+              <Check className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <p className="flex-1 text-sm">{paymentNotice.message}</p>
+            <button
+              type="button"
+              onClick={() => setPaymentNotice(null)}
+              aria-label="Dismiss payment message"
+              className="text-current/70 hover:text-current"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
