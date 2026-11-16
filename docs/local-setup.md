@@ -25,18 +25,19 @@ cd Blockchain
 
 ## 2. Configure Environment Variables
 
-Create a `.env.local` file in the project root and add:
+Create a `.env.local` file in the project root (or copy `.env.example`) and add your configuration:
 
 ```ini
 # Stellar Smart Contract Configuration
-NEXT_PUBLIC_CONTRACT_ID=CAXHP6BEZLR7TMAOLDLR2CJ3JQQO7HXINQZHIY4WBQHLV6IFHD3LPNO6
+NEXT_PUBLIC_CONTRACT_ID=your_stellar_contract_id_here
 NEXT_PUBLIC_STELLAR_NETWORK=testnet
 NEXT_PUBLIC_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 
 # Supabase Credentials
-NEXT_PUBLIC_SUPABASE_URL=https://uxnvilrmheejgpvajdhi.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_AKpEw9Rpdmo0vHbHtcKzVQ_t5Fe7Kj6
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_publishable_key_here
 ```
+
 
 These are client-side configuration values used by this demo. Never put a Supabase service-role key or other private secret in a `NEXT_PUBLIC_` variable.
 
